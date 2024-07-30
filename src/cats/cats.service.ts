@@ -10,7 +10,8 @@ export class CatsService {
   }
 
   findOne(id: number): CreateCatDto {
-    return this.cats.find(id);
+    // idでcreateCatDtoのidを検索して返す
+    return this.cats.find((cat) => cat.id === id);
   }
 
   create(createCatDto: CreateCatDto): string {
@@ -25,7 +26,14 @@ export class CatsService {
     return 'this action as a multi new cat';
   }
 
-  update(id: string, updateCatDto: CreateCatDto): string {
+  /**
+   * idをもとに更新する
+   * @param {number} id
+   * @param {CreateCatDto} updateCatDto
+   * @returns {string}
+   */
+  update(id: number, updateCatDto: CreateCatDto): string {
+    this.cats.push(updateCatDto);
     return 'this action as a update cat';
   }
 }

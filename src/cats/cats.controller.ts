@@ -26,9 +26,13 @@ export class CatsController {
     return this.catsService.multiCreate(createDto);
   }
 
+  /**
+   * idをもとに更新する
+   * @param {number} id
+   * @param {CreateCatDto} updateCatDto
+   */
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateCatDto: CreateCatDto): string {
-    const cat: CreateCatDto = this.catsService.findOne(id);
-    return this.catsService.update(cat, updateCatDto);
+  update(@Param('id') id: number, @Body() updateCatDto: CreateCatDto): string {
+    return this.catsService.update(id, updateCatDto);
   }
 }
