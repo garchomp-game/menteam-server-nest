@@ -1,29 +1,53 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
+import { APP_FILTER } from '@nestjs/core';
+import { AllExceptionsFilter } from './core/status_response';
+import { accessLogger, CustomLogger } from './core/logger';
 
+console.log('process.env.NODE_ENV', process.env.NODE_ENV);
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot({
-      type: 'postgres', // データベースタイプ
-      host: process.env.DB_HOST,
-      port: +process.env.DB_PORT, // ポート番号は数値である必要があるため、+記号を使用して変換
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_DATABASE,
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // 開発用途に限ります。本番環境では使用しないでください。
+    ConfigModule.forRoot({
+      envFilePath: `.env.${process.env.NODE_ENV || 'development'}`, // 環境名に基づいてファイルを読み込む
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: configService.get<'mysql' | 'postgres'>('DB_TYPE'),
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true,
+      }),
+      inject: [ConfigService],
     }),
     UserModule,
     AuthModule,
   ],
   controllers: [AppController],
-  providers: [AppService, TypeOrmModule, JwtModule],
+  providers: [
+    AppService,
+    TypeOrmModule,
+    JwtModule,
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+    CustomLogger,
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(accessLogger).forRoutes('*');
+  }
+}

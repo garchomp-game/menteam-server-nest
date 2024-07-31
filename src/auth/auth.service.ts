@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../user/user.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +12,7 @@ export class AuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   // auth.service.ts
@@ -41,8 +43,10 @@ export class AuthService {
 
   async login(user: User): Promise<{ accessToken: string }> {
     const payload = { username: user.email, sub: user.id };
+    const secret = this.configService.get<string>('JWT_SECRET');
+    const expiresIn = this.configService.get<string>('JWT_EXPIRES_IN');
     return {
-      accessToken: this.jwtService.sign(payload),
+      accessToken: this.jwtService.sign(payload, { secret, expiresIn }),
     };
   }
 
