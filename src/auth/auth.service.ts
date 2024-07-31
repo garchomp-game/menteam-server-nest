@@ -1,4 +1,4 @@
-import * as bcrypt from 'bcryptjs'; // bcryptをbcryptjsに置き換える
+import * as bcrypt from 'bcryptjs';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,9 +13,22 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  // auth.service.ts
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.userRepository.findOne({ where: { email } });
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (!user) {
+      console.log('User not found');
+      return null;
+    }
+    if (!user.password) {
+      console.log('Password is not set for this user');
+      return null;
+    }
+    console.log(user.email);
+    console.log(password);
+    console.log(user.password);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (isMatch) {
       return user;
     }
     return null;
@@ -31,5 +44,24 @@ export class AuthService {
     return {
       accessToken: this.jwtService.sign(payload),
     };
+  }
+
+  async register(registerDto: any): Promise<User | null> {
+    const { email } = registerDto;
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new Error('User already exists with this email');
+    }
+
+    const hashedPassword = await this.hashPassword(registerDto.password);
+    const newUser = this.userRepository.create({
+      email: email,
+      password: hashedPassword,
+    });
+    await this.userRepository.save(newUser);
+    return newUser;
   }
 }
